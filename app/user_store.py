@@ -2,6 +2,9 @@ import os
 import json
 from datetime import datetime, timezone
 
+import requests
+from werkzeug.security import generate_password_hash
+
 USERS_FILE = os.path.join(os.path.dirname(__file__), "..", "users.json")
 SUBMISSIONS_FILE = os.path.join(os.path.dirname(__file__), "..", "submissions.json")
 
@@ -19,6 +22,51 @@ def read_users() -> list:
 def write_users(users: list) -> None:
     with open(USERS_FILE, "w") as f:
         json.dump(users, f, indent=4)
+
+
+def sync_monday_users() -> int:
+    """Fetch Monday.com users and add any that don't already exist.
+    Returns the number of new users added, or -1 on failure.
+    Called automatically at app startup.
+    """
+    api_key = os.getenv("MONDAY_API_KEY", "")
+    default_pw = os.getenv("DEFAULT_USER_PASSWORD", "")
+    if not api_key or not default_pw:
+        return 0  # Silently skip if not configured
+    try:
+        resp = requests.post(
+            "https://api.monday.com/v2",
+            json={"query": "{ users { id name email } }"},
+            headers={"Authorization": api_key, "Content-Type": "application/json"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        monday_users = resp.json().get("data", {}).get("users", [])
+    except Exception as e:
+        print(f"[startup sync] Failed to fetch Monday.com users: {e}")
+        return -1
+
+    users = read_users()
+    existing = {u.get("username") for u in users}
+    hashed_pw = generate_password_hash(default_pw)
+    added = 0
+    for mu in monday_users:
+        email = (mu.get("email") or "").strip().lower()
+        if not email or email in existing:
+            continue
+        users.append({
+            "username": email, "email": email,
+            "name": mu.get("name") or email,
+            "monday_id": str(mu.get("id", "")),
+            "provider": "password",
+            "password": hashed_pw,
+        })
+        existing.add(email)
+        added += 1
+    if added:
+        write_users(users)
+        print(f"[startup sync] Added {added} new users from Monday.com.")
+    return added
 
 
 # ── Submission log ────────────────────────────────────────────────────────────

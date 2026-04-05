@@ -31,6 +31,12 @@ def create_app():
     from .oauth_providers import register_providers
     register_providers(oauth)
 
+    # Auto-sync Monday.com users on every startup so the list
+    # survives Render's ephemeral filesystem / dyno restarts.
+    with app.app_context():
+        from .user_store import sync_monday_users
+        sync_monday_users()
+
     # Register blueprints
     from .blueprints.auth import auth_bp
     from .blueprints.main import main_bp
