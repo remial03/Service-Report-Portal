@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from flask import Flask
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 from .extensions import login_manager, oauth
 
 
@@ -14,6 +15,7 @@ def create_app():
         template_folder=os.path.join(os.path.dirname(__file__), "templates"),
     )
     app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
