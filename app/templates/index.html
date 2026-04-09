@@ -532,12 +532,51 @@
               <strong>Note:</strong> Submitted forms sync to Monday.com
               automatically when you're online.
             </div>
+
+            {# Auto-sync settings row #}
+            <div
+              class="d-flex align-items-center justify-content-between mb-3 px-1"
+            >
+              <span class="fw-semibold" style="font-size: 0.9rem"
+                ><i class="fas fa-cog me-1"></i> Auto-Sync</span
+              >
+              <div class="form-check form-switch mb-0">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  id="autoSyncToggle"
+                  checked
+                  onchange="
+                    window.setAutoSync(this.checked);
+                    this.closest('.form-check').querySelector(
+                      'label',
+                    ).textContent = this.checked ? 'ON' : 'OFF';
+                  "
+                />
+                <label class="form-check-label" for="autoSyncToggle">ON</label>
+              </div>
+            </div>
+
             <div id="submissionsList" class="list-group">
               <p class="text-muted text-center py-4">
                 <i class="fas fa-check-circle"></i> No submissions yet.
               </p>
             </div>
           </div>
+
+          {# Restore autoSync toggle state from localStorage #}
+          <script>
+            (function () {
+              const toggle = document.getElementById("autoSyncToggle");
+              if (!toggle) return;
+              const stored = localStorage.getItem("autoSyncEnabled");
+              const enabled = stored !== "false";
+              toggle.checked = enabled;
+              toggle.closest(".form-check").querySelector("label").textContent =
+                enabled ? "ON" : "OFF";
+            })();
+          </script>
         </div>
       </form>
     </div>

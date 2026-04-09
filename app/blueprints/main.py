@@ -307,3 +307,11 @@ def web_manifest():
     """Serve Web App Manifest for PWA installability."""
     return send_from_directory(current_app.static_folder, "manifest.webmanifest",
                                mimetype="application/manifest+json")
+
+
+# ── Keep-alive ping (prevents Render free tier from spinning down) ─────────────
+
+@main_bp.route("/ping")
+def ping():
+    """Lightweight endpoint pinged by the client every 10 minutes."""
+    return "", 204

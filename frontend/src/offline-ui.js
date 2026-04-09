@@ -12,6 +12,7 @@ import {
   deleteDraft,
   saveSubmission,
   getAllSubmissions,
+  deleteSubmission,
 } from "./draft.js";
 
 import { sigBlobs, pads, SIG_PADS } from "./signatures.js";
@@ -442,9 +443,10 @@ async function refreshSubmissionsList() {
     )) {
       const date = new Date(sub.submitted_at).toLocaleString();
       const name = sub.item_name || `Item ${sub.id.slice(0, 8)}`;
+      const isSynced = sub.status === "synced";
 
       let statusBadge = "";
-      if (sub.status === "synced") {
+      if (isSynced) {
         statusBadge =
           '<span class="badge bg-success"><i class="fas fa-check"></i> Synced</span>';
       } else if (sub.status === "syncing") {
@@ -458,6 +460,12 @@ async function refreshSubmissionsList() {
           '<span class="badge bg-info"><i class="fas fa-cloud-upload-alt"></i> Local</span>';
       }
 
+      const editBtn = !isSynced
+        ? `<button class="btn btn-sm btn-outline-primary me-1" onclick="editSubmissionUI('${sub.id}')" title="Edit & re-submit"><i class="fas fa-pencil-alt"></i> Edit</button>`
+        : "";
+
+      const deleteBtn = `<button class="btn btn-sm btn-outline-danger" onclick="deleteSubmissionUI('${sub.id}')" title="Delete"><i class="fas fa-trash"></i></button>`;
+
       html += `
         <div class="list-group-item p-3">
           <div class="d-flex justify-content-between align-items-start">
@@ -467,8 +475,9 @@ async function refreshSubmissionsList() {
               ${sub.monday_item_id ? `<br/><small class="text-success"><i class="fas fa-check"></i> Monday ID: ${sub.monday_item_id}</small>` : ""}
               ${sub.last_sync_error ? `<br/><small class="text-danger"><i class="fas fa-exclamation"></i> ${sub.last_sync_error}</small>` : ""}
             </div>
-            <div class="ms-2">
+            <div class="ms-2 d-flex flex-column align-items-end gap-1">
               ${statusBadge}
+              <div class="mt-1">${editBtn}${deleteBtn}</div>
             </div>
           </div>
         </div>
@@ -500,8 +509,84 @@ async function submitDraft(draftId) {
   }, 400);
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// SUBMISSION ACTIONS
+// ─────────────────────────────────────────────────────────────────────────
+
+async function deleteSubmissionUI(id) {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this pending submission? This cannot be undone.",
+  );
+  if (!confirmed) return;
+  try {
+    await deleteSubmission(id);
+    await refreshSubmissionsList();
+    if (window.refreshNetworkBadge) window.refreshNetworkBadge();
+  } catch (err) {
+    console.error("[SUBMISSIONS] Delete error:", err);
+    alert("Failed to delete submission.");
+  }
+}
+
+async function editSubmissionUI(id) {
+  try {
+    const all = await getAllSubmissions();
+    const sub = all.find((s) => s.id === id);
+    if (!sub) {
+      alert("Submission not found.");
+      return;
+    }
+
+    const form = document.getElementById("mainForm");
+    if (!form) return;
+
+    // Populate form fields from stored formData
+    for (const [key, val] of Object.entries(sub.formData || {})) {
+      const values = Array.isArray(val) ? val : [val];
+      const els = form.querySelectorAll(`[name="${key}"]`);
+      if (!els.length) continue;
+      const el = els[0];
+      if (el.tagName === "SELECT" && el.multiple) {
+        for (const opt of el.options) {
+          opt.selected = values.includes(opt.value);
+        }
+        if (window.$ && window.$.fn.select2) {
+          window.$(el).trigger("change");
+        }
+      } else if (el.type === "checkbox") {
+        for (const e of els) {
+          e.checked = values.includes(e.value);
+        }
+      } else if (el.type === "radio") {
+        for (const e of els) {
+          e.checked = e.value === String(val);
+        }
+      } else {
+        el.value = Array.isArray(val) ? (val[0] ?? "") : (val ?? "");
+      }
+    }
+
+    // Switch to the form tab
+    const formTab = document.querySelector('[data-bs-target="#tabpane-form"]');
+    if (formTab) formTab.click();
+
+    // Scroll to top of form
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Delete the outbox copy so re-submit creates a fresh one
+    await deleteSubmission(id);
+    await refreshSubmissionsList();
+    if (window.refreshNetworkBadge) window.refreshNetworkBadge();
+  } catch (err) {
+    console.error("[SUBMISSIONS] Edit error:", err);
+    alert("Failed to load submission for editing.");
+  }
+}
+
 window.editDraft = editDraft;
 window.deleteDraftUI = deleteDraftUI;
 window.submitDraft = submitDraft;
 window.refreshDraftsList = refreshDraftsList;
 window.refreshSubmissionsList = refreshSubmissionsList;
+window.deleteSubmissionUI = deleteSubmissionUI;
+window.editSubmissionUI = editSubmissionUI;

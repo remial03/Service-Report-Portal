@@ -138,9 +138,29 @@ async function refreshNetworkBadge() {
   }
 }
 
+// ── Auto-sync toggle (persisted in localStorage) ─────────────────────────────
+
+let _autoSyncEnabled = localStorage.getItem("autoSyncEnabled") !== "false";
+
+export function isAutoSyncEnabled() {
+  return _autoSyncEnabled;
+}
+
+export function setAutoSync(enabled) {
+  _autoSyncEnabled = enabled;
+  localStorage.setItem("autoSyncEnabled", enabled ? "true" : "false");
+  refreshNetworkBadge();
+  if (enabled && navigator.onLine) syncPendingSubmissions();
+}
+
+// expose for offline-ui.js toggle handler
+window.setAutoSync = setAutoSync;
+window.isAutoSyncEnabled = isAutoSyncEnabled;
+
 // ── Pending submissions sync engine ──────────────────────────────────────────
 
 async function syncPendingSubmissions() {
+  if (!_autoSyncEnabled) return;
   const pending = await getPendingSubmissions();
   if (!pending.length) {
     await refreshNetworkBadge();
@@ -458,6 +478,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       .then((reg) => console.log("[SW] Registered, scope:", reg.scope))
       .catch((err) => console.warn("[SW] Registration failed:", err));
   }
+
+  // Keep-alive ping — prevent Render free tier from sleeping (every 10 min)
+  setInterval(
+    () => {
+      fetch("/ping", { method: "GET" }).catch(() => {});
+    },
+    10 * 60 * 1000,
+  );
 
   console.log("[INIT] Service Report Portal ready");
 });
