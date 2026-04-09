@@ -174,9 +174,13 @@ async function editDraft(draftId) {
       } else {
         field.value = Array.isArray(value) ? value[value.length - 1] : value;
       }
-      // Trigger update for any non-AJAX Select2
-      if (window.$ && window.$(field).data("select2")) {
-        window.$(field).trigger("change");
+      // Trigger update for any non-AJAX Select2 (guard against throwing on plain inputs)
+      try {
+        if (window.$ && window.$(field).data("select2")) {
+          window.$(field).trigger("change");
+        }
+      } catch (_) {
+        /* not a Select2 element */
       }
     }
 
