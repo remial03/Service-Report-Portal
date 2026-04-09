@@ -123,16 +123,6 @@ async function refreshNetworkBadge() {
   const pending = await getPendingSubmissions();
   const isOnline = navigator.onLine;
 
-  // Hide/show online-only fields
-  const onlineOnlyFields = ["field-wrap-linked", "field-wrap-assigned"];
-  for (const id of onlineOnlyFields) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = isOnline ? "" : "none";
-  }
-  // Also toggle required on the linked_item_id select so offline saves don't block
-  const linkedSelect = document.getElementById("field-linked");
-  if (linkedSelect) linkedSelect.required = isOnline;
-
   if (!isOnline) {
     badge.className = "badge bg-danger me-2";
     badge.textContent =
@@ -273,37 +263,8 @@ async function handleSubmit(e) {
       }
     }
 
-    // Collect form data + Select2 AJAX values
+    // Collect form data
     const formData = new FormData(form);
-    if (window.$ && window.$.fn.select2) {
-      const peopleEl = window.$("#field-workwith");
-      if (peopleEl.length) {
-        formData.delete("tsp_workwith");
-        const selected = peopleEl.select2("data") || [];
-        console.log("[WORKWITH] select2 data:", selected);
-        for (const item of selected) {
-          if (item.id) formData.append("tsp_workwith", item.id);
-        }
-        console.log(
-          "[WORKWITH] FormData tsp_workwith:",
-          formData.getAll("tsp_workwith"),
-        );
-      }
-
-      const assignedEl = window.$("#field-assigned");
-      if (assignedEl.length) {
-        formData.delete("tsp_assigned");
-        const selectedAssigned = assignedEl.select2("data") || [];
-        console.log("[ASSIGNED] select2 data:", selectedAssigned);
-        for (const item of selectedAssigned) {
-          if (item.id) formData.append("tsp_assigned", item.id);
-        }
-        console.log(
-          "[ASSIGNED] FormData tsp_assigned:",
-          formData.getAll("tsp_assigned"),
-        );
-      }
-    }
 
     // ── OFFLINE PATH ─────────────────────────────────────────────────────────
     if (!navigator.onLine) {

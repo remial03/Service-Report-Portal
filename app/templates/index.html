@@ -71,31 +71,6 @@
                   required
                 />
               </div>
-              <div class="col-md-4" id="field-wrap-linked">
-                <label class="form-label" for="field-linked"
-                  >Service Request Number
-                  <span class="text-danger">*</span></label
-                >
-                <select
-                  id="field-linked"
-                  name="linked_item_id"
-                  class="form-select"
-                  required
-                >
-                  <option value="">Search and select…</option>
-                </select>
-              </div>
-              <div class="col-md-4" id="field-wrap-assigned">
-                <label class="form-label" for="field-assigned"
-                  >TSP Assigned</label
-                >
-                <select
-                  id="field-assigned"
-                  name="tsp_assigned"
-                  class="form-select people-picker"
-                  multiple
-                ></select>
-              </div>
             </div>
           </div>
         </div>
@@ -355,12 +330,13 @@
                 <label class="form-label" for="field-workwith"
                   >TSP WORKWITH (Additional Technicians)</label
                 >
-                <select
+                <input
+                  type="email"
                   id="field-workwith"
                   name="tsp_workwith"
-                  class="form-select people-picker"
-                  multiple
-                ></select>
+                  class="form-control"
+                  placeholder="e.g. colleague@mcbtsi.com"
+                />
               </div>
               <div class="col-12">
                 <label class="form-label" for="field-rec">Recommendation</label>
