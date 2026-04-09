@@ -82,54 +82,12 @@ async function handleSaveDraft(e) {
     // Collect form data
     const formData = new FormData(form);
 
-    // Sync Select2 values
-    if (window.$ && window.$.fn.select2) {
-      const peopleEl = window.$("#field-workwith");
-      if (peopleEl.length) {
-        formData.delete("tsp_workwith");
-        const selected = peopleEl.select2("data") || [];
-        for (const item of selected) {
-          if (item.id) formData.append("tsp_workwith", item.id);
-        }
-        // Save display data for restoration
-        if (selected.length) {
-          formData.set(
-            "_tsp_workwith_data",
-            JSON.stringify(
-              selected.map((i) => ({ id: i.id, text: i.text || i.id })),
-            ),
-          );
-        }
-      }
-
-      const assignedEl = window.$("#field-assigned");
-      if (assignedEl.length) {
-        formData.delete("tsp_assigned");
-        const selectedAssigned = assignedEl.select2("data") || [];
-        for (const item of selectedAssigned) {
-          if (item.id) formData.append("tsp_assigned", item.id);
-        }
-        // Save display data for restoration
-        if (selectedAssigned.length) {
-          formData.set(
-            "_tsp_assigned_data",
-            JSON.stringify(
-              selectedAssigned.map((i) => ({ id: i.id, text: i.text || i.id })),
-            ),
-          );
-        }
-      }
-      // Save Service Request display text for restoration
-      const linkedEl = window.$("select[name='linked_item_id']");
-      if (linkedEl.length) {
-        const linkedData = linkedEl.select2("data");
-        if (linkedData && linkedData[0] && linkedData[0].id) {
-          formData.set(
-            "_linked_item_text",
-            linkedData[0].text || linkedData[0].id,
-          );
-        }
-      }
+    // Sync plain email input for tsp_workwith (no longer a Select2)
+    const workwithInput = document.getElementById("field-workwith");
+    if (workwithInput) {
+      formData.delete("tsp_workwith");
+      const emailVal = workwithInput.value.trim();
+      if (emailVal) formData.append("tsp_workwith", emailVal);
     }
 
     // Save or update draft
@@ -235,28 +193,13 @@ async function editDraft(draftId) {
       }
     }
 
-    // Restore TSP WORKWITH (AJAX people picker)
-    const workwithIds = Array.isArray(formData["tsp_workwith"])
-      ? formData["tsp_workwith"]
-      : formData["tsp_workwith"]
-        ? [formData["tsp_workwith"]]
-        : [];
-    if (workwithIds.length && window.$ && window.$.fn.select2) {
-      const workwithEl = window.$("#field-workwith");
-      if (workwithEl.length) {
-        workwithEl.find("option").remove();
-        let items = workwithIds.map((id) => ({ id, text: id }));
-        try {
-          const saved = formData["_tsp_workwith_data"];
-          if (saved) items = JSON.parse(saved);
-        } catch {
-          /* keep fallback */
-        }
-        items.forEach((item) =>
-          workwithEl.append(new Option(item.text, item.id, true, true)),
-        );
-        workwithEl.trigger("change");
-      }
+    // Restore TSP WORKWITH (plain email input)
+    const workwithEmailField = document.getElementById("field-workwith");
+    if (workwithEmailField) {
+      const stored = formData["tsp_workwith"];
+      workwithEmailField.value = Array.isArray(stored)
+        ? stored[0] || ""
+        : stored || "";
     }
 
     // Restore signatures — update in-memory blobs AND the preview DOM

@@ -34,26 +34,6 @@ import { initOfflineUI } from "./offline-ui.js";
 
 // ── Select2 initialisation ────────────────────────────────────────────────────
 
-/** Render a person option with avatar/initials like Monday's people column */
-function formatPerson(person) {
-  if (!person.id) return person.text;
-  const photo = person.photo
-    ? `<img src="${person.photo}" class="people-avatar" alt="" />`
-    : `<span class="people-initials">${person.initials || "?"}</span>`;
-  return window.$(
-    `<span class="people-option">${photo}<span class="people-name">${person.text}</span></span>`,
-  );
-}
-
-/** Render a selected person tag */
-function formatPersonSelection(person) {
-  if (!person.id) return person.text;
-  const photo = person.photo
-    ? `<img src="${person.photo}" class="people-avatar-sm" alt="" />`
-    : `<span class="people-initials-sm">${person.initials || "?"}</span>`;
-  return window.$(`<span class="people-tag">${photo} ${person.text}</span>`);
-}
-
 function initSelect2() {
   if (!window.$ || !window.$.fn.select2) {
     setTimeout(initSelect2, 100);
@@ -61,54 +41,12 @@ function initSelect2() {
   }
   try {
     // Service request dropdown
-    window.$('select[name="linked_item_id"]').select2({
-      placeholder: "Type to search service requests...",
-      allowClear: true,
-      width: "100%",
-      ajax: {
-        url: "/search_linked_items",
-        dataType: "json",
-        delay: 300,
-        data: (params) => ({ q: params.term || "" }),
-        processResults: (data) => ({ results: data.results }),
-        cache: false,
-      },
-      minimumInputLength: 1,
-      language: {
-        inputTooShort: () => "Type at least 1 character to search…",
-        searching: () => "Searching Monday.com…",
-        noResults: () => "No service requests found",
-      },
-    });
-
     // Machine System dropdown with search
     window.$(".machine-picker").select2({
       placeholder: "Search machine systems…",
       allowClear: true,
       width: "100%",
       minimumResultsForSearch: 0,
-    });
-
-    // People picker — TSP WORKWITH
-    window.$(".people-picker").select2({
-      placeholder: "Search team members…",
-      allowClear: true,
-      width: "100%",
-      ajax: {
-        url: "/api/users",
-        dataType: "json",
-        delay: 250,
-        data: (params) => ({ q: params.term || "" }),
-        processResults: (data) => ({ results: data.results }),
-        cache: true,
-      },
-      minimumInputLength: 0,
-      templateResult: formatPerson,
-      templateSelection: formatPersonSelection,
-      language: {
-        searching: () => "Searching team members…",
-        noResults: () => "No members found",
-      },
     });
   } catch (e) {
     console.error("Select2 init error:", e);
