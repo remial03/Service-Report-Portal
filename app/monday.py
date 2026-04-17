@@ -6,6 +6,12 @@ import os
 import sys
 import traceback
 import requests
+from datetime import datetime, timezone, timedelta
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
 
 API_KEY: str = os.getenv("MONDAY_API_KEY", "")
 MAIN_BOARD: str = os.getenv("MAIN_BOARD_ID", "")
@@ -140,6 +146,13 @@ def resolve_users_by_email(emails: list[str]) -> list[int]:
 _COLUMN_TYPE_OVERRIDES: dict[str, str] = {}
 
 
+def _build_datetime_column_value(date_part: str, time_part: str, time_zone: str | None = None) -> dict:
+    value = {"date": date_part, "time": time_part}
+    if time_zone:
+        value["time_zone"] = time_zone
+    return value
+
+
 def _build_column_type_overrides() -> None:
     """Populate _COLUMN_TYPE_OVERRIDES from environment at first use."""
     global _COLUMN_TYPE_OVERRIDES
@@ -165,7 +178,12 @@ def format_column_value(col_id: str, value) -> dict | str | None:
         return {"email": val_str, "text": val_str}
 
     col_lower = str(col_id).lower()
-    val_str = str(value).strip()
+    time_zone = None
+    if isinstance(value, dict) and "datetime" in value:
+        val_str = str(value.get("datetime") or "").strip()
+        time_zone = str(value.get("client_timezone") or "").strip() or None
+    else:
+        val_str = str(value).strip()
 
     # File / signature — uploaded separately, never via column values
     if "file" in col_lower or "signature" in col_lower:
@@ -217,7 +235,7 @@ def format_column_value(col_id: str, value) -> dict | str | None:
             parts = val_str.split(" ", 1)
             date_part = parts[0]
             time_part = parts[1] if len(parts) > 1 else "00:00:00"
-        return {"date": date_part, "time": time_part}
+        return _build_datetime_column_value(date_part, time_part, time_zone)
 
     # Date / datetime — include time component when present
     if "date" in col_lower:
@@ -226,7 +244,7 @@ def format_column_value(col_id: str, value) -> dict | str | None:
             if time_part and time_part != "00:00":
                 if time_part.count(":") == 1:
                     time_part += ":00"
-                return {"date": date_part, "time": time_part}
+                return _build_datetime_column_value(date_part, time_part, time_zone)
             return {"date": date_part}
         return {"date": val_str}
 

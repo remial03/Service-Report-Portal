@@ -66,15 +66,28 @@ def submit():
             if not workwith_person_ids:
                 print(f"[WORKWITH] No matching Monday users — people column will be left unset")
 
+        client_timezone = (request.form.get("client_timezone") or "").strip()
+        client_tz_offset = (request.form.get("client_tz_offset") or "").strip()
+
+        def _tz_datetime_field(name: str):
+            raw = request.form.get(name)
+            if not raw:
+                return None
+            return {
+                "datetime": raw,
+                "client_timezone": client_timezone,
+                "client_tz_offset": client_tz_offset,
+            }
+
         form_data = {
             "COL_EMAIL": request.form.get("email"),
             # COL_TSP_WORKWITH is a people column — populated below after email resolution
             # (kept here as None so it flows through format_column_value with resolved IDs)
             "COL_TSP_WORKWITH": workwith_person_ids if workwith_person_ids else None,
-            "COL_SERVICE_START": request.form.get("service_start"),
-            "COL_SERVICE_END": request.form.get("service_end"),
-            "COL_LOGIN_DATE": request.form.get("login_date"),
-            "COL_LOGOUT_DATE": request.form.get("logout_date"),
+            "COL_SERVICE_START": _tz_datetime_field("service_start"),
+            "COL_SERVICE_END": _tz_datetime_field("service_end"),
+            "COL_LOGIN_DATE": _tz_datetime_field("login_date"),
+            "COL_LOGOUT_DATE": _tz_datetime_field("logout_date"),
             "COL_PROBLEMS": request.form.get("problems"),
             "COL_JOB_DONE": request.form.get("job_done"),
             "COL_PARTS_REPLACED": request.form.get("parts_replaced"),

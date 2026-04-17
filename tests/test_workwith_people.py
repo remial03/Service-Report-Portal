@@ -5,9 +5,11 @@ Run:
     .venv\\Scripts\\python.exe -m pytest tests/test_workwith_people.py -v
 """
 import importlib
+import os
 import sys
 import types
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -133,6 +135,74 @@ class TestFormatColumnValuePeopleColumn(unittest.TestCase):
         # Empty list is falsy — format_column_value returns None (skips column)
         result = self.m.format_column_value("multiple_person_mks8jn7f", [])
         self.assertIsNone(result)
+
+    def test_datetime_local_value_includes_timezone(self):
+        result = self.m.format_column_value(
+            "date_mks8wqcw",
+            {
+                "datetime": "2026-04-17T09:00",
+                "client_timezone": "America/Los_Angeles",
+            },
+        )
+        self.assertEqual(result, {
+            "date": "2026-04-17",
+            "time": "09:00:00",
+            "time_zone": "America/Los_Angeles",
+        })
+
+
+class TestSubmitCreatedBy(unittest.TestCase):
+
+    def test_submit_assigns_created_by_column(self):
+        import app.blueprints.main as main
+        from app import create_app
+
+        with patch('app.user_store.sync_monday_users'):
+            app = create_app()
+
+        with app.test_request_context(
+            '/submit',
+            method='POST',
+            data={
+                'name': 'Test Item',
+                'email': 'service@example.com',
+                'tsp_workwith': '',
+                'client_timezone': 'America/Los_Angeles',
+                'client_tz_offset': '480',
+            },
+            headers={'X-Requested-With': 'XMLHttpRequest'},
+        ):
+            with patch.dict(os.environ, {'COL_CREATED_BY': 'multiple_person_mm24g2nr'}):
+                with patch.object(main.monday, 'resolve_users_by_email', return_value=[111]) as mock_resolve:
+                    def fake_format(col_id, value):
+                        return None if value is None else {'ok': True}
+
+                    with patch.object(main.monday, 'format_column_value', side_effect=fake_format) as mock_format:
+                        with patch.object(main.monday, 'graphql', return_value={'data': {'create_item': {'id': '999'}}}) as mock_graphql:
+                            with patch.object(main, 'log_submission') as mock_log:
+                                with patch.object(main, 'current_user', SimpleNamespace(is_authenticated=True, id='tester')):
+                                    response = main.submit.__wrapped__()
+
+            mock_resolve.assert_called_once_with(['service@example.com'])
+            self.assertEqual(mock_graphql.call_count, 1)
+            args = mock_graphql.call_args.args
+            self.assertEqual(args[0].strip().startswith('mutation'), True)
+            variables = args[1]
+            self.assertIsNotNone(variables)
+            self.assertIn('columnVals', variables)
+            self.assertIn('multiple_person_mm24g2nr', variables['columnVals'])
+            self.assertTrue(response.get_json().get('success'))
+            self.assertEqual(response.get_json().get('item_id'), '999')
+
+    def test_created_by_people_column_serializes_personsAndTeams(self):
+        import app.monday as m
+
+        result = m.format_column_value('multiple_person_mm24g2nr', [111])
+        self.assertEqual(result, {
+            'personsAndTeams': [
+                {'id': 111, 'kind': 'person'},
+            ]
+        })
 
 
 if __name__ == "__main__":
