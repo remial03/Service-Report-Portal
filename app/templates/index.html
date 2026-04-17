@@ -228,17 +228,6 @@
           </div>
         </div>
 
-        <input
-          type="hidden"
-          name="client_timezone"
-          id="field-client-timezone"
-        />
-        <input
-          type="hidden"
-          name="client_tz_offset"
-          id="field-client-tz-offset"
-        />
-
         {# 4 · Service Dates #}
         <div class="form-card">
           <div class="form-card-header">
@@ -562,19 +551,6 @@
               toggle.checked = enabled;
               toggle.closest(".form-check").querySelector("label").textContent =
                 enabled ? "ON" : "OFF";
-            })();
-
-            (function () {
-              const timezoneInput = document.getElementById(
-                "field-client-timezone",
-              );
-              const tzOffsetInput = document.getElementById(
-                "field-client-tz-offset",
-              );
-              if (!timezoneInput || !tzOffsetInput) return;
-              timezoneInput.value =
-                Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-              tzOffsetInput.value = String(new Date().getTimezoneOffset());
             })();
           </script>
         </div>

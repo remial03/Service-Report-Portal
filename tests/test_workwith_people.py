@@ -136,18 +136,14 @@ class TestFormatColumnValuePeopleColumn(unittest.TestCase):
         result = self.m.format_column_value("multiple_person_mks8jn7f", [])
         self.assertIsNone(result)
 
-    def test_datetime_local_value_includes_timezone(self):
+    def test_datetime_local_value_preserves_original_input(self):
         result = self.m.format_column_value(
             "date_mks8wqcw",
-            {
-                "datetime": "2026-04-17T09:00",
-                "client_timezone": "America/Los_Angeles",
-            },
+            "2026-04-17T09:00",
         )
         self.assertEqual(result, {
             "date": "2026-04-17",
             "time": "09:00:00",
-            "time_zone": "America/Los_Angeles",
         })
 
 
@@ -167,8 +163,6 @@ class TestSubmitCreatedBy(unittest.TestCase):
                 'name': 'Test Item',
                 'email': 'service@example.com',
                 'tsp_workwith': '',
-                'client_timezone': 'America/Los_Angeles',
-                'client_tz_offset': '480',
             },
             headers={'X-Requested-With': 'XMLHttpRequest'},
         ):

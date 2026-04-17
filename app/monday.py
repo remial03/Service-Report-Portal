@@ -178,10 +178,8 @@ def format_column_value(col_id: str, value) -> dict | str | None:
         return {"email": val_str, "text": val_str}
 
     col_lower = str(col_id).lower()
-    time_zone = None
     if isinstance(value, dict) and "datetime" in value:
         val_str = str(value.get("datetime") or "").strip()
-        time_zone = str(value.get("client_timezone") or "").strip() or None
     else:
         val_str = str(value).strip()
 
@@ -235,7 +233,7 @@ def format_column_value(col_id: str, value) -> dict | str | None:
             parts = val_str.split(" ", 1)
             date_part = parts[0]
             time_part = parts[1] if len(parts) > 1 else "00:00:00"
-        return _build_datetime_column_value(date_part, time_part, time_zone)
+        return _build_datetime_column_value(date_part, time_part)
 
     # Date / datetime — include time component when present
     if "date" in col_lower:
@@ -244,7 +242,7 @@ def format_column_value(col_id: str, value) -> dict | str | None:
             if time_part and time_part != "00:00":
                 if time_part.count(":") == 1:
                     time_part += ":00"
-                return _build_datetime_column_value(date_part, time_part, time_zone)
+                return _build_datetime_column_value(date_part, time_part)
             return {"date": date_part}
         return {"date": val_str}
 
