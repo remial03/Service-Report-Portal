@@ -146,6 +146,18 @@ class TestFormatColumnValuePeopleColumn(unittest.TestCase):
             "time": "09:00:00",
         })
 
+    def test_datetime_local_value_includes_timezone_when_available(self):
+        result = self.m.format_column_value(
+            "date_mks8wqcw",
+            "2026-04-17T09:00",
+            "America/New_York",
+        )
+        self.assertEqual(result, {
+            "date": "2026-04-17",
+            "time": "09:00:00",
+            "time_zone": "America/New_York",
+        })
+
 
 class TestSubmitCreatedBy(unittest.TestCase):
 
@@ -168,7 +180,7 @@ class TestSubmitCreatedBy(unittest.TestCase):
         ):
             with patch.dict(os.environ, {'COL_CREATED_BY': 'multiple_person_mm24g2nr'}):
                 with patch.object(main.monday, 'resolve_users_by_email', return_value=[111]) as mock_resolve:
-                    def fake_format(col_id, value):
+                    def fake_format(col_id, value, time_zone=None):
                         return None if value is None else {'ok': True}
 
                     with patch.object(main.monday, 'format_column_value', side_effect=fake_format) as mock_format:

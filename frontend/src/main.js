@@ -175,12 +175,33 @@ async function syncPendingSubmissions() {
 
 // ── Form submission ───────────────────────────────────────────────────────────
 
+function getClientTimeZone() {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timezone) return timezone;
+  } catch (err) {
+    // Fall back to UTC offset if the browser does not expose a timezone name.
+  }
+
+  const offset = -new Date().getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const absOffset = Math.abs(offset);
+  const hours = String(Math.floor(absOffset / 60)).padStart(2, "0");
+  const minutes = String(absOffset % 60).padStart(2, "0");
+  return `UTC${sign}${hours}:${minutes}`;
+}
+
 async function handleSubmit(e) {
   e.preventDefault();
 
   const form = document.getElementById("mainForm");
   const btn = document.getElementById("submitBtn");
   const statusDiv = document.getElementById("uploadStatus");
+
+  const tzInput = form?.querySelector('[name="local_timezone"]');
+  if (tzInput) {
+    tzInput.value = getClientTimeZone();
+  }
 
   btn.disabled = true;
   btn.textContent = "Submitting...";

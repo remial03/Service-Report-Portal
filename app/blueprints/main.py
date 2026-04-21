@@ -66,6 +66,8 @@ def submit():
             if not workwith_person_ids:
                 print(f"[WORKWITH] No matching Monday users — people column will be left unset")
 
+        local_timezone = request.form.get("local_timezone")
+
         form_data = {
             "COL_EMAIL": request.form.get("email"),
             # COL_TSP_WORKWITH is a people column — populated below after email resolution
@@ -110,7 +112,7 @@ def submit():
             col_id = os.getenv(env_var)
             if not col_id:
                 continue
-            formatted = monday.format_column_value(col_id, form_value)
+            formatted = monday.format_column_value(col_id, form_value, local_timezone)
             if formatted is not None:
                 column_values[col_id] = formatted
 
