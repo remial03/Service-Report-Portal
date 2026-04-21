@@ -161,7 +161,7 @@ def _build_column_type_overrides() -> None:
         _COLUMN_TYPE_OVERRIDES[biomed_email_col] = "email"
 
 
-def format_column_value(col_id: str, value) -> dict | str | None:
+def format_column_value(col_id: str, value, time_zone: str | None = None) -> dict | str | None:
     """
     Convert a form value to the correct Monday.com column value format.
     Returns None to skip the column.
@@ -233,7 +233,7 @@ def format_column_value(col_id: str, value) -> dict | str | None:
             parts = val_str.split(" ", 1)
             date_part = parts[0]
             time_part = parts[1] if len(parts) > 1 else "00:00:00"
-        return _build_datetime_column_value(date_part, time_part)
+        return _build_datetime_column_value(date_part, time_part, time_zone)
 
     # Date / datetime — include time component when present
     if "date" in col_lower:
@@ -242,7 +242,7 @@ def format_column_value(col_id: str, value) -> dict | str | None:
             if time_part and time_part != "00:00":
                 if time_part.count(":") == 1:
                     time_part += ":00"
-                return _build_datetime_column_value(date_part, time_part)
+                return _build_datetime_column_value(date_part, time_part, time_zone)
             return {"date": date_part}
         return {"date": val_str}
 
