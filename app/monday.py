@@ -198,6 +198,19 @@ def format_column_value(
     col_lower = str(col_id).lower()
     if isinstance(value, dict) and "datetime" in value:
         val_str = str(value.get("datetime") or "").strip()
+    elif isinstance(value, str):
+        # Try to parse as ISO datetime string (with or without timezone)
+        val_str = value.strip()
+        try:
+            dt = datetime.fromisoformat(val_str.replace("Z", "+00:00"))
+            # Ensure UTC timezone for consistent handling
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            elif dt.tzinfo != timezone.utc:
+                dt = dt.astimezone(timezone.utc)
+            val_str = dt.isoformat()
+        except (ValueError, TypeError):
+            pass  # Keep as plain string if not a valid datetime
     else:
         val_str = str(value).strip()
 
