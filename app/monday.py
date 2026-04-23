@@ -196,21 +196,22 @@ def format_column_value(
         return {"email": val_str, "text": val_str}
 
     col_lower = str(col_id).lower()
+
+    # Attempt to parse incoming datetime strings to a Python datetime so
+    # we can emit clean date/time (HH:MM:SS) and a separate timezone value.
+    parsed_dt = None
     if isinstance(value, dict) and "datetime" in value:
         val_str = str(value.get("datetime") or "").strip()
+        try:
+            parsed_dt = datetime.fromisoformat(val_str.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            parsed_dt = None
     elif isinstance(value, str):
-        # Try to parse as ISO datetime string (with or without timezone)
         val_str = value.strip()
         try:
-            dt = datetime.fromisoformat(val_str.replace("Z", "+00:00"))
-            # Ensure UTC timezone for consistent handling
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            elif dt.tzinfo != timezone.utc:
-                dt = dt.astimezone(timezone.utc)
-            val_str = dt.isoformat()
+            parsed_dt = datetime.fromisoformat(val_str.replace("Z", "+00:00"))
         except (ValueError, TypeError):
-            pass  # Keep as plain string if not a valid datetime
+            parsed_dt = None
     else:
         val_str = str(value).strip()
 
@@ -269,20 +270,51 @@ def format_column_value(
 
     # Datetime (datetime-local → {"date": "YYYY-MM-DD", "time": "HH:MM:SS"})
     if "datetime" in col_lower:
+        if parsed_dt:
+            # Use parsed datetime to produce clean time string (no offset)
+            if parsed_dt.tzinfo is None:
+                parsed_dt = parsed_dt.replace(tzinfo=timezone.utc)
+            tz_name = time_zone or (parsed_dt.tzinfo.tzname(parsed_dt) if parsed_dt.tzinfo else None)
+            date_part = parsed_dt.date().isoformat()
+            time_part = parsed_dt.time().strftime("%H:%M:%S")
+            return _build_datetime_column_value(date_part, time_part, tz_name)
+
+        # Fallback: string parsing — strip timezone offsets if present
         if "T" in val_str:
-            date_part, time_part = val_str.split("T")
+            date_part, time_part = val_str.split("T", 1)
+            # Remove timezone offset (+00:00 or -05:00) or trailing Z
+            for sep in ("+", "-", "Z"):
+                if sep in time_part:
+                    time_part = time_part.split(sep)[0]
+                    break
             if time_part.count(":") == 1:
                 time_part += ":00"
         else:
             parts = val_str.split(" ", 1)
             date_part = parts[0]
             time_part = parts[1] if len(parts) > 1 else "00:00:00"
+            if time_part.count(":") == 1:
+                time_part += ":00"
         return _build_datetime_column_value(date_part, time_part, time_zone)
 
     # Date / datetime — include time component when present
     if "date" in col_lower:
+        # If we parsed a datetime, and it has a non-zero time component,
+        # include the time part as well (cleaned). Otherwise, return date only.
+        if parsed_dt:
+            date_part = parsed_dt.date().isoformat()
+            time_part = parsed_dt.time().strftime("%H:%M:%S")
+            if time_part and time_part != "00:00:00":
+                tz_name = time_zone or (parsed_dt.tzinfo.tzname(parsed_dt) if parsed_dt.tzinfo else None)
+                return _build_datetime_column_value(date_part, time_part, tz_name)
+            return {"date": date_part}
+
         if "T" in val_str:
             date_part, time_part = val_str.split("T", 1)
+            for sep in ("+", "-", "Z"):
+                if sep in time_part:
+                    time_part = time_part.split(sep)[0]
+                    break
             if time_part and time_part != "00:00":
                 if time_part.count(":") == 1:
                     time_part += ":00"
