@@ -177,7 +177,6 @@ class TestSubmitCreatedBy(unittest.TestCase):
             method='POST',
             data={
                 'name': 'Test Item',
-                'tsp_email': 'service@example.com',
                 'tsp_workwith': '',
             },
             headers={'X-Requested-With': 'XMLHttpRequest'},
@@ -190,7 +189,7 @@ class TestSubmitCreatedBy(unittest.TestCase):
                     with patch.object(main.monday, 'format_column_value', side_effect=fake_format) as mock_format:
                         with patch.object(main.monday, 'graphql', return_value={'data': {'create_item': {'id': '999'}}}) as mock_graphql:
                             with patch.object(main, 'log_submission') as mock_log:
-                                with patch.object(main, 'current_user', SimpleNamespace(is_authenticated=True, id='tester')):
+                                with patch.object(main, 'current_user', SimpleNamespace(is_authenticated=True, id='service@example.com')):
                                     response = main.submit.__wrapped__()
 
             mock_resolve.assert_called_once_with(['service@example.com'])

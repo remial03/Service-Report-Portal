@@ -66,15 +66,16 @@ def submit():
             if not workwith_person_ids:
                 print(f"[WORKWITH] No matching Monday users — people column will be left unset")
 
-        # ── Extract Service TSP Email and resolve to Monday people IDs for COL_CREATED_BY ────────
-        tsp_email = request.form.get("tsp_email", "").strip()
-        print(f"[CREATED_BY] Service TSP Email from form: {tsp_email!r}")
-
+        # ── Derive Created-By from logged-in user and resolve to Monday people IDs ────────
         created_by_person_ids: list[int] = []
-        if tsp_email:
-            created_by_person_ids = monday.resolve_users_by_email([tsp_email])
-            if not created_by_person_ids:
-                print(f"[CREATED_BY] No matching Monday users — people column will be left unset")
+        if current_user.is_authenticated:
+            # current_user.id stores the username (email) for local users created from Monday.com sync
+            user_email = str(current_user.id or "").strip()
+            if user_email:
+                print(f"[CREATED_BY] Resolving Monday user for logged-in account: {user_email!r}")
+                created_by_person_ids = monday.resolve_users_by_email([user_email])
+                if not created_by_person_ids:
+                    print(f"[CREATED_BY] No matching Monday users for {user_email!r} — COL_CREATED_BY will be left unset")
 
         local_timezone = request.form.get("local_timezone")
 
