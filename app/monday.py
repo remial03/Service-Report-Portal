@@ -2,6 +2,7 @@
 Monday.com API helpers.
 All calls go through this module so request logic is centralised.
 """
+
 import os
 import sys
 import traceback
@@ -22,7 +23,9 @@ FILE_URL = "https://api.monday.com/v2/file"
 _HEADERS = {"Authorization": API_KEY, "API-Version": "2023-10"}
 
 
-def graphql(query: str, variables: dict | None = None, api_key: str | None = None) -> dict:
+def graphql(
+    query: str, variables: dict | None = None, api_key: str | None = None
+) -> dict:
     """Execute a Monday.com GraphQL query/mutation.
     Pass api_key to use a specific user's token instead of the admin key.
     """
@@ -40,15 +43,23 @@ def graphql(query: str, variables: dict | None = None, api_key: str | None = Non
         return {}
 
 
-def upload_file(item_id: str, column_id: str, file_data: bytes, filename: str, api_key: str | None = None) -> tuple[bool, str]:
+def upload_file(
+    item_id: str,
+    column_id: str,
+    file_data: bytes,
+    filename: str,
+    api_key: str | None = None,
+) -> tuple[bool, str]:
     """
     Upload binary PNG data to a Monday.com file/signature column.
     Returns (success: bool, file_id_or_error: str).
     """
     try:
-        print(f"[SIGNATURE] Uploading {filename} → item {item_id}, col {column_id}, {len(file_data)} bytes")
+        print(
+            f"[SIGNATURE] Uploading {filename} -> item {item_id}, col {column_id}, {len(file_data)} bytes"
+        )
         mutation = (
-            'mutation ($file: File!) { add_file_to_column '
+            "mutation ($file: File!) { add_file_to_column "
             f'(item_id: {item_id}, column_id: "{column_id}", file: $file) {{ id }} }}'
         )
         key = api_key or os.getenv("MONDAY_API_KEY", API_KEY)
@@ -113,27 +124,30 @@ def resolve_users_by_email(emails: list[str]) -> list[int]:
     if not normalised:
         return []
 
-    # Populate cache on first call
+    # Populate cache on first call (merge with any pre-seeded entries)
     if not _email_to_id_cache:
         try:
             res = graphql("{ users { id email } }")
             raw = (res or {}).get("data", {}).get("users") or []
-            _email_to_id_cache = {
+            new_cache = {
                 u.get("email", "").lower(): int(u["id"])
                 for u in raw
                 if u.get("email") and u.get("id")
             }
-            print(f"[WORKWITH] Cached {len(_email_to_id_cache)} workspace users from Monday.com")
+            _email_to_id_cache.update(new_cache)
+            if new_cache:
+                print(
+                    f"[WORKWITH] Cached {len(new_cache)} workspace users from Monday.com (total {len(_email_to_id_cache)})"
+                )
         except Exception as exc:
             print(f"[WORKWITH] Failed to fetch workspace users: {exc}")
-            return []
 
     result: list[int] = []
     for email in normalised:
         uid = _email_to_id_cache.get(email)
         if uid:
             result.append(uid)
-            print(f"[WORKWITH] Resolved {email!r} → user_id={uid}")
+            print(f"[WORKWITH] Resolved {email!r} -> user_id={uid}")
         else:
             print(f"[WORKWITH] No Monday.com user found for email: {email!r}")
 
@@ -146,7 +160,9 @@ def resolve_users_by_email(emails: list[str]) -> list[int]:
 _COLUMN_TYPE_OVERRIDES: dict[str, str] = {}
 
 
-def _build_datetime_column_value(date_part: str, time_part: str, time_zone: str | None = None) -> dict:
+def _build_datetime_column_value(
+    date_part: str, time_part: str, time_zone: str | None = None
+) -> dict:
     value = {"date": date_part, "time": time_part}
     if time_zone:
         value["time_zone"] = time_zone
@@ -161,7 +177,9 @@ def _build_column_type_overrides() -> None:
         _COLUMN_TYPE_OVERRIDES[biomed_email_col] = "email"
 
 
-def format_column_value(col_id: str, value, time_zone: str | None = None) -> dict | str | None:
+def format_column_value(
+    col_id: str, value, time_zone: str | None = None
+) -> dict | str | None:
     """
     Convert a form value to the correct Monday.com column value format.
     Returns None to skip the column.
@@ -194,14 +212,19 @@ def format_column_value(col_id: str, value, time_zone: str | None = None) -> dic
         except (ValueError, TypeError):
             return None
 
-    # Multiple person / people column
-    if "multiple_person" in col_lower or "person" in col_lower:
+    # Multiple person / people column (also match "created_by", "creator")
+    if (
+        "multiple_person" in col_lower
+        or "person" in col_lower
+        or "created_by" in col_lower
+        or "creator" in col_lower
+    ):
         try:
             ids = []
-            if isinstance(value, str) and "@" in value:
-                ids = resolve_users_by_email([value])
-                if not ids:
-                    return None
+            if isinstance(value, str):
+                # Support both comma-separated emails and single "@" email
+                emails = [e.strip() for e in value.split(",") if e.strip()]
+                ids = resolve_users_by_email(emails)
             elif isinstance(value, list):
                 ids = [int(v) for v in value]
             else:
@@ -259,7 +282,11 @@ def format_column_value(col_id: str, value, time_zone: str | None = None) -> dic
         return {"text": val_str}
 
     # Short text / text — plain string value
-    if col_lower.startswith("short_text") or col_lower.startswith("text") or "text" in col_lower:
+    if (
+        col_lower.startswith("short_text")
+        or col_lower.startswith("text")
+        or "text" in col_lower
+    ):
         return val_str
 
     # Default: treat as plain string
