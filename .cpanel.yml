@@ -1,0 +1,4 @@
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home4/mcbtsjq1/Service-Report-Portal
+    - /bin/cp -R * $DEPLOYPATH
